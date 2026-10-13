@@ -28,3 +28,5 @@ ENV/
 .ruff_cache/
 .DS_Store
 Thumbs.db
+*-summary.md
+artifacts-report.md

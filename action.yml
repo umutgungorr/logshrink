@@ -22,6 +22,10 @@ inputs:
     description: 'Additional flags to pass to logshrink (e.g. --errors-only, --preset docker)'
     required: false
     default: ''
+  fail-on-error:
+    description: 'Fail the action step with exit code 1 if any error incidents are detected'
+    required: false
+    default: 'false'
 
 outputs:
   incident-count:
@@ -40,35 +44,29 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install LogShrink
-      shell: bash
-      run: |
-        PYTHON_BIN="python"
-        if ! command -v python &> /dev/null; then
-          PYTHON_BIN="python3"
-        fi
-        "$PYTHON_BIN" -m pip install --quiet "${{ github.action_path }}"
-
-    - name: Run LogShrink
+    - name: Run LogShrink Action
       id: run-logshrink
       shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        INPUT_LOG_FILE: ${{ inputs.log-file }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
+        INPUT_EXPORT_FILE: ${{ inputs.export-file }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
       run: |
         PYTHON_BIN="python"
         if ! command -v python &> /dev/null; then
           PYTHON_BIN="python3"
         fi
 
-        ARGS=()
-        if [ "${{ inputs.summary }}" = "true" ]; then
-          ARGS+=(--summary)
+        # Optional: install logshrink CLI if pip is available
+        if "$PYTHON_BIN" -m pip --version &> /dev/null; then
+          "$PYTHON_BIN" -m pip install --quiet --no-warn-script-location "$ACTION_PATH" 2>/dev/null || \
+          "$PYTHON_BIN" -m pip install --quiet --break-system-packages --no-warn-script-location "$ACTION_PATH" 2>/dev/null || true
         fi
-        if [ -n "${{ inputs.export-file }}" ]; then
-          ARGS+=(--export "${{ inputs.export-file }}")
-        fi
-        if [ -n "${{ inputs.options }}" ]; then
-          read -r -a EXTRA <<< "${{ inputs.options }}"
-          ARGS+=("${EXTRA[@]}")
-        fi
-        ARGS+=("${{ inputs.log-file }}")
 
-        "$PYTHON_BIN" -m logshrink "${ARGS[@]}"
+        # Ensure action source directory is always available on PYTHONPATH
+        export PYTHONPATH="$ACTION_PATH/src${PYTHONPATH:+:$PYTHONPATH}"
+
+        "$PYTHON_BIN" -m logshrink.action

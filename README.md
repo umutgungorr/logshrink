@@ -20,7 +20,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB.svg?logo=python&logoColor=white)](https://github.com/umutgungorr/logshrink)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20external-success.svg)](pyproject.toml)
 [![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](#test-suite)
-[![Tests](https://img.shields.io/badge/tests-62%20passed-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-68%20passed-brightgreen.svg)](#test-suite)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -288,6 +288,7 @@ jobs:
 | `summary` | Write formatted markdown incident report to `$GITHUB_STEP_SUMMARY` | No | `'true'` |
 | `export-file` | File path to export markdown incident report file | No | `''` |
 | `options` | Additional CLI flags (e.g. `--errors-only`, `--preset docker`) | No | `''` |
+| `fail-on-error` | Fail the action step with exit code 1 if any error incidents are detected | No | `'false'` |
 
 ### 📤 Action Outputs
 

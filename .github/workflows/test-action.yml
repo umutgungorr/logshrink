@@ -53,3 +53,22 @@ jobs:
           fi
 
           echo "Action verification successful!"
+
+      - name: Run LogShrink Action with options and custom flags
+        id: logshrink-options-step
+        uses: ./
+        with:
+          log-file: demo.log
+          options: '--preset auto --threshold 3 --ignore "App initialized"'
+          summary: 'false'
+
+      - name: Verify options step outputs
+        shell: bash
+        run: |
+          echo "Incident count with options: ${{ steps.logshrink-options-step.outputs.incident-count }}"
+          if [ "${{ steps.logshrink-options-step.outputs.incident-count }}" -ne 1 ]; then
+            echo "Error: expected 1 incident, got ${{ steps.logshrink-options-step.outputs.incident-count }}"
+            exit 1
+          fi
+          echo "Options step verification successful!"
+

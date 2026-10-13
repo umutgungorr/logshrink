@@ -116,3 +116,20 @@ def test_cli_github_output_env(tmp_path, monkeypatch):
     assert "reduced-percentage=" in content
     assert "suppressed-lines=" in content
     assert "total-lines=3" in content
+
+
+def test_cli_fail_on_error(tmp_path):
+    log_clean = tmp_path / "clean.log"
+    log_clean.write_text("2026-10-13 [INFO] all good\n", encoding="utf-8")
+
+    log_err = tmp_path / "error.log"
+    log_err.write_text("2026-10-13 [ERROR] disaster\n", encoding="utf-8")
+
+    # Clean log should return 0 with or without --fail-on-error
+    assert run([str(log_clean), "--fail-on-error"]) == 0
+
+    # Error log returns 0 without --fail-on-error
+    assert run([str(log_err)]) == 0
+
+    # Error log returns 1 with --fail-on-error
+    assert run([str(log_err), "--fail-on-error"]) == 1

@@ -90,6 +90,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Exit with non-zero exit code (1) if any error incidents are detected (useful for CI pipelines).",
+    )
+
+    parser.add_argument(
         "--copy",
         action="store_true",
         help="Copy captured error incidents to the system clipboard upon exit.",
@@ -215,66 +221,69 @@ def run(args: list[str] | None = None) -> int:
         for out in aggregator.finalize():
             print(out, flush=True)
 
-        incidents = aggregator.detected_incidents
+    incidents = aggregator.detected_incidents
 
-        # Markdown Export if requested
-        if config.export_path:
+    # Markdown Export if requested
+    if config.export_path:
+        Exporter.save_markdown(
+            incidents=incidents,
+            stats=aggregator.stats,
+            destination_path=config.export_path,
+            source_name=source_label,
+        )
+
+    # Step Summary if requested (e.g. GitHub Actions step summary)
+    if parsed_args.summary:
+        summary_env = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_env:
+            Exporter.append_markdown(
+                incidents=incidents,
+                stats=aggregator.stats,
+                destination_path=summary_env,
+                source_name=source_label,
+            )
+        else:
             Exporter.save_markdown(
                 incidents=incidents,
                 stats=aggregator.stats,
-                destination_path=config.export_path,
+                destination_path="logshrink-summary.md",
                 source_name=source_label,
             )
 
-        # Step Summary if requested (e.g. GitHub Actions step summary)
-        if parsed_args.summary:
-            summary_env = os.environ.get("GITHUB_STEP_SUMMARY")
-            if summary_env:
-                Exporter.append_markdown(
-                    incidents=incidents,
-                    stats=aggregator.stats,
-                    destination_path=summary_env,
-                    source_name=source_label,
-                )
-            else:
-                Exporter.save_markdown(
-                    incidents=incidents,
-                    stats=aggregator.stats,
-                    destination_path="logshrink-summary.md",
-                    source_name=source_label,
-                )
+    # Output GitHub Actions step outputs if running in CI
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with contextlib.suppress(Exception):
+            with open(github_output, "a", encoding="utf-8") as gf:
+                gf.write(f"incident-count={len(incidents)}\n")
+                gf.write(f"reduced-percentage={aggregator.stats.reduction_percentage:.1f}\n")
+                gf.write(f"suppressed-lines={aggregator.stats.suppressed_lines}\n")
+                gf.write(f"total-lines={aggregator.stats.total_lines}\n")
 
-        # Output GitHub Actions step outputs if running in CI
-        github_output = os.environ.get("GITHUB_OUTPUT")
-        if github_output:
-            with contextlib.suppress(Exception):
-                with open(github_output, "a", encoding="utf-8") as gf:
-                    gf.write(f"incident-count={len(incidents)}\n")
-                    gf.write(f"reduced-percentage={aggregator.stats.reduction_percentage:.1f}\n")
-                    gf.write(f"suppressed-lines={aggregator.stats.suppressed_lines}\n")
-                    gf.write(f"total-lines={aggregator.stats.total_lines}\n")
+    # Clipboard Copy if requested
+    if config.copy_to_clipboard:
+        report_text = Exporter.generate_markdown(
+            incidents=incidents,
+            stats=aggregator.stats,
+            source_name=source_label,
+        )
+        success = Exporter.copy_to_clipboard(report_text)
+        if success:
+            count_msg = f"{len(incidents)} incidents" if incidents else "clean run report"
+            print(f"[LogShrink] Copied {count_msg} to clipboard.", file=sys.stderr)
+        else:
+            print("[LogShrink] Warning: Clipboard utility unavailable.", file=sys.stderr)
 
-        # Clipboard Copy if requested
-        if config.copy_to_clipboard:
-            report_text = Exporter.generate_markdown(
-                incidents=incidents,
-                stats=aggregator.stats,
-                source_name=source_label,
-            )
-            success = Exporter.copy_to_clipboard(report_text)
-            if success:
-                count_msg = f"{len(incidents)} incidents" if incidents else "clean run report"
-                print(f"[LogShrink] Copied {count_msg} to clipboard.", file=sys.stderr)
-            else:
-                print("[LogShrink] Warning: Clipboard utility unavailable.", file=sys.stderr)
+    # Print stats card
+    if config.show_stats:
+        summary = formatter.format_summary_stats(
+            aggregator.stats,
+            export_file=config.export_path or "",
+        )
+        print(summary, file=sys.stderr)
 
-        # Print stats card
-        if config.show_stats:
-            summary = formatter.format_summary_stats(
-                aggregator.stats,
-                export_file=config.export_path or "",
-            )
-            print(summary, file=sys.stderr)
+    if parsed_args.fail_on_error and len(incidents) > 0:
+        return 1
 
     return 0
 
