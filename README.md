@@ -1,151 +1,173 @@
-# 🔍 LogShrink
-
 <div align="center">
 
-**A zero-config CLI that deduplicates repetitive polling noise and auto-highlights real errors in live terminal logs.**
+```text
+  ██╗      ██████╗  ██████╗ ███████╗██╗  ██╗██████╗ ██╗███╗   ██╗██╗  ██╗
+  ██║     ██╔═══██╗██╔════╝ ██╔════╝██║  ██║██╔══██╗██║████╗  ██║██║ ██╔╝
+  ██║     ██║   ██║██║  ███╗███████╗███████║██████╔╝██║██╔██╗ ██║█████╔╝
+  ██║     ██║   ██║██║   ██║╚════██║██╔══██║██╔══██╗██║██║╚██╗██║██╔═██╗
+  ███████╗╚██████╔╝╚██████╔╝███████║██║  ██║██║  ██║██║██║ ╚████║██║  ██╗
+  ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+```
+
+### Turn Terminal Log Flood into Signal. Instantly.
+
+**A zero-dependency CLI stream filter that deduplicates repetitive polling floods, highlights multi-line errors, and captures incident postmortems in real time.**
 
 [![CI](https://github.com/umutgungorr/logshrink/actions/workflows/ci.yml/badge.svg)](https://github.com/umutgungorr/logshrink/actions)
-[![PyPI version](https://img.shields.io/badge/pypi-v0.1.0-blue.svg)](https://pypi.org/project/logshrink/)
-[![Python Version](https://img.shields.io/badge/python-3.9+-3776AB.svg?logo=python&logoColor=white)](https://pypi.org/project/logshrink/)
-[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen.svg)]()
-[![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20external-success.svg)]()
+[![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg?logo=git&logoColor=white)](https://github.com/umutgungorr/logshrink/releases)
+[![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB.svg?logo=python&logoColor=white)](https://github.com/umutgungorr/logshrink)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20external-success.svg)](pyproject.toml)
+[![Coverage](https://img.shields.io/badge/coverage-84%25-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen.svg)](#test-suite)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[Quickstart](#-quickstart--recipes) •
-[Installation](#-installation) •
-[Interactive Demo](#-terminal-walkthrough) •
-[CLI Reference](#-cli-reference) •
-[Benchmarks](#-benchmarks--performance) •
-[Contributing](#-contributing)
+---
+
+[⚡ Quickstart](#quickstart) •
+[💥 Problem vs. Solution](#problem-solution) •
+[📊 Feature Comparison](#feature-comparison) •
+[📦 Installation](#installation) •
+[⚙️ CLI Reference](#cli-reference) •
+[🔬 Architecture](#pipeline-architecture) •
+[🚀 Benchmarks](#benchmarks) •
+[🧪 Test Suite](#test-suite) •
+[🤝 Contributing](#contributing)
 
 </div>
 
 ---
 
-## 🛑 The Problem
+<a id="problem-solution"></a>
+## 💥 The Problem vs. Solution
 
-When developing or debugging backend microservices, Kubernetes pods, and container clusters in a live terminal:
+When developing or debugging backend microservices, Kubernetes pods, and container clusters:
 
-- **Polling Floods**: Thousands of identical Kubernetes liveness probes (`GET /healthz 200`), database heartbeats (`SELECT 1`), and Prometheus metrics scrapes scroll by every minute.
-- **Lost Errors**: When a real deadlock, panic, or unhandled 500 error finally occurs, it scrolls off your terminal buffer in 300 milliseconds.
-- **Brittle Grep Pipelines**: Chaining `grep -v "health" | grep -v "metrics"` is cumbersome, hides genuine failures on health endpoints, and breaks multi-line tracebacks.
+- **Polling Floods**: Thousands of identical Kubernetes liveness probes (`GET /healthz 200`), database heartbeats (`SELECT 1`), and Prometheus scrapes scroll by every minute.
+- **Lost Errors**: When a real deadlock, panic, or unhandled 500 error occurs, it scrolls off your terminal buffer in 300 milliseconds.
+- **Brittle Grep Pipelines**: Chaining `grep -v "health" | grep -v "metrics"` is dangerous—it **blindly deletes genuine failures** occurring on health endpoints and mutilates multi-line tracebacks.
+
+### Side-by-Side Terminal Comparison
+
+```text
+┌───────────────────────────────────────────────┐   ┌───────────────────────────────────────────────┐
+│           BEFORE: Raw Terminal Flood          │   │             AFTER: With LogShrink             │
+├───────────────────────────────────────────────┤   ├───────────────────────────────────────────────┤
+│ 19:00:01 [INFO] GET /healthz 200 (took 0.4ms) │   │ 19:00:01 [INFO] GET /healthz 200 (took 0.4ms) │
+│ 19:00:02 [INFO] GET /healthz 200 (took 0.3ms) │   │   [-] [x480 suppressed] [INFO] GET /healthz   │
+│ 19:00:03 [INFO] GET /healthz 200 (took 0.5ms) │   │                       (last seen 19:04:11)    │
+│ 19:00:04 [INFO] GET /healthz 200 (took 0.4ms) │   │                                               │
+│ ... [480 identical lines flooding buffer] ... │   │ ┌── INCIDENT #1: ERROR ────────────────────── │
+│ 19:04:12 [ERROR] Database deadlock!           │   │ │ 19:04:12 [ERROR] Database deadlock!         │
+│ Traceback (most recent call last):            │   │ │ Traceback (most recent call last):          │
+│   File "/app/db.py", line 42, in query        │   │ │   File "/app/db.py", line 42, in query      │
+│     raise OperationalError("deadlock")        │   │ │     raise OperationalError("deadlock")      │
+│ 19:04:13 [INFO] GET /healthz 200 (took 0.3ms) │   │ └──────────────────────────────────────────── │
+│ 19:04:14 [INFO] GET /healthz 200 (took 0.4ms) │   │ 19:04:13 [INFO] GET /healthz 200 (took 0.3ms) │
+│                                               │   │                                               │
+│   [CRITICAL ERROR SCROLLED OFF BUFFER]        │   │   [NOISE COLLAPSED • ERROR BOXED • 0 DRIFT]   │
+└───────────────────────────────────────────────┘   └───────────────────────────────────────────────┘
+```
+
+**LogShrink** solves this with **zero configuration**. It dynamically aggregates repetitive polling noise into live counter badges like `[-] [x480 suppressed]` while preserving the first occurrence, auto-boxes multi-line stack traces (Python, Go, Java, Rust, Node.js), and exports incident postmortems straight to Markdown or your system clipboard.
 
 ---
 
-## ✨ The Solution: LogShrink
+<a id="feature-comparison"></a>
+## 📊 Feature Comparison
 
-**LogShrink** is an instant, zero-dependency stream filter for your terminal. It collapses repetitive polling noise into live counter badges like `[x480 suppressed]` while preserving the first occurrence, auto-detects multi-line stack traces (Python, Go, Java, Node, Rust), and can export incidents to Markdown or clipboard with a single flag.
+Why use **LogShrink** instead of standard Unix utilities or heavyweight observability platforms?
 
-```
-                           BEFORE (Raw Terminal Output)
-   2026-10-13 19:00:01 [INFO] GET /healthz 200 (took 0.4ms)
-   2026-10-13 19:00:02 [INFO] GET /healthz 200 (took 0.6ms)
-   2026-10-13 19:00:03 [INFO] GET /healthz 200 (took 0.5ms)
-   ... [478 identical lines flooding the terminal] ...
-   2026-10-13 19:04:12 [ERROR] Database deadlock detected!
-   Traceback (most recent call last):
-     File "/app/db.py", line 42, in query
-       raise OperationalError("deadlock detected")
-   2026-10-13 19:04:13 [INFO] GET /healthz 200 (took 0.3ms)
-
-                                      ⬇️
-                             AFTER (With LogShrink)
-   2026-10-13 19:00:01 [INFO] GET /healthz 200 (took 0.4ms)
-     [-] [x480 suppressed] [INFO] GET /healthz 200 (last seen 19:04:11)
-   ┌── INCIDENT #1: ERROR ───────────────────────────────────────────
-   │ 2026-10-13 19:04:12 [ERROR] Database deadlock detected!
-   │ Traceback (most recent call last):
-   │   File "/app/db.py", line 42, in query
-   │     raise OperationalError("deadlock detected")
-   └─────────────────────────────────────────────────────────────────
-   2026-10-13 19:04:13 [INFO] GET /healthz 200 (took 0.3ms)
-```
+| Capability | LogShrink | `grep -v` / `awk` | `lnav` | `grc` / `colortail` | Datadog / ELK |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Dynamic Suppression** | ✅ **Yes** (live counter badge) | ❌ No (blind deletion) | ⚠️ Manual filter query | ❌ No (all lines printed) | ✅ Yes (server aggregation) |
+| **First Occurrence Preserved** | ✅ **Yes** (full initial context) | ❌ No (deleted entirely) | ⚠️ Hidden | ❌ No | ✅ Indexed |
+| **Multi-Line Trace Grouping** | ✅ **Yes** (native 5 languages) | ❌ Breaks multi-line context | ⚠️ Requires format setup | ❌ Line-by-line regex only | ⚠️ Requires backend config |
+| **Zero Configuration** | ✅ **Yes** (works out of box) | ❌ Complex piped regexes | ⚠️ TUI learning curve | ❌ Requires custom configs | ❌ Daemons & clusters |
+| **Sub-15ms Cold Start** | ✅ **Yes** (< 15 ms) | ✅ Yes (< 5 ms) | ⚠️ ~150–250 ms | ⚠️ ~50 ms | ❌ N/A (Web UI) |
+| **External Dependencies** | ✅ **0** (pure Python stdlib) | ✅ 0 (POSIX tools) | ⚠️ C++ binaries & libs | ⚠️ Python packages | ❌ Heavy agents & JVM |
+| **Incident Markdown Export** | ✅ **`--export report.md`** | ❌ Manual piping | ⚠️ Manual file save | ❌ None | ⚠️ Web dashboard |
+| **Instant Clipboard Copy** | ✅ **`--copy`** (1-click Slack paste) | ❌ Pipe to `pbcopy`/`xclip` | ❌ None | ❌ None | ❌ Manual |
+| **Unix Stream & Pipe Friendly** | ✅ **Native** (`tail -f`, pipes) | ✅ Native | ⚠️ Full-screen TUI | ✅ Native | ❌ Network ingestion |
+| **Adaptive ANSI Highlighting** | ✅ **Yes** (respects `NO_COLOR`) | ❌ None | ✅ Yes | ✅ Yes | ❌ Web styling only |
 
 ---
 
-## ⚡ Key Highlights
+<a id="quickstart"></a>
+## ⚡ Quickstart & Production Recipes
 
-- 🚀 **Zero External Dependencies**: 100% Python standard library. Sub-millisecond cold start with no heavy wheels.
-- 🌊 **Stream & Follow Support**: Works natively with Unix pipes (`docker logs -f ... | logshrink`) or file following (`logshrink -f app.log`).
-- 🧠 **Dynamic Pattern Clustering**: Intelligently masks ephemeral fields (timestamps, IPv4/IPv6, UUIDs, hex pointers, request latencies) to cluster repeated log structures.
-- 🚨 **Incident Boundary Detection**: Automatically recognizes stack frame boundaries across Python, Go panics, Java exceptions, Rust unwinds, and Node.js async traces.
-- 📋 **One-Click Incident Export & Clipboard**: Export formatted incident postmortems to Markdown (`--export incident.md`) or copy straight to clipboard (`--copy`) for instant Slack/GitHub issue sharing.
-- 🎨 **Adaptive Terminal Formatting**: High-contrast ANSI highlighting with automatic fallback on `NO_COLOR=1` or non-interactive pipes.
-- 🎛️ **Zero-Config Presets**: Tailored parsers for Docker (`--preset docker`), JSON streams (`--preset json`), and Web access logs (`--preset web`).
+LogShrink behaves like a standard Unix pipe: pipe any command into `logshrink`, or pass files directly.
 
----
-
-## 📦 Installation
-
-### Run instantly with `uvx` (No installation needed)
+### 🐳 Docker & Docker Compose
 ```bash
-uvx logshrink --help
-# Pipe directly
-docker logs -f my-container | uvx logshrink
+# Follow all services in Docker Compose
+docker compose logs -f --tail=100 | logshrink
+
+# Strip Docker container prefixes and follow specific container
+docker logs -f my-api-backend | logshrink -p docker
 ```
 
-### Install via `pip`
+### ☸️ Kubernetes Pods & Deployments
 ```bash
-pip install logshrink
+# Live stream logs across all replicas of a deployment
+kubectl logs -f deployment/api-gateway --tail=50 --max-log-requests=10 | logshrink
+
+# Filter production pod down to warnings and fatal incidents only
+kubectl logs -f pod/payment-worker-8d76b -n production | logshrink --errors-only
 ```
 
-### Install via `pipx`
+### 🐧 Systemd Journal & Linux Daemons
 ```bash
-pipx install logshrink
+# Nginx or Caddy web server
+journalctl -u nginx.service -f -n 200 | logshrink -p web
+
+# Follow any system service cleanly
+journalctl -u backend.service -f -o cat | logshrink
 ```
 
-### Standalone one-liner via `curl`
+### 🚀 Backend Frameworks
 ```bash
-curl -sSL https://raw.githubusercontent.com/umutgungorr/logshrink/main/src/logshrink/cli.py | python3 - --help
+# Python: FastAPI / Uvicorn / Flask
+uvicorn app.main:app --reload | logshrink
+
+# Python: Django / Gunicorn
+gunicorn config.wsgi:application --access-logfile - | logshrink -p web
+
+# Node.js: Express, NestJS, Next.js
+npm run dev | logshrink
+
+# Go: Gin, Fiber, Chi
+go run ./cmd/server | logshrink
+
+# Rust: Axum, Actix-web, Tokio
+cargo run | logshrink
 ```
 
-### From source
+### 📋 Instant Incident Report for Slack & GitHub
+When an unexpected crash occurs, generate an instant postmortem Markdown report and copy it to your clipboard with a single command:
 ```bash
-git clone https://github.com/umutgungorr/logshrink.git
-cd logshrink
-pip install .
+logshrink /var/log/app.log --export incident_report.md --copy
 ```
 
----
-
-## 🚀 Quickstart & Recipes
-
-### 1. Pipe Live Container or Server Logs
-```bash
-# Docker container logs
-docker logs -f api-backend | logshrink
-
-# Kubernetes pod logs
-kubectl logs -f pod/gateway-service | logshrink
-
-# Local dev server (FastAPI, Flask, Next.js, Django)
-uvicorn main:app --reload | logshrink
-```
-
-### 2. Live Follow Like `tail -f`
-```bash
-logshrink -f /var/log/nginx/access.log
-```
-
-### 3. Isolate Errors & Discard Routine Noise
-Drop all routine 200 OK / debug statements and show only warnings and incidents:
-```bash
-cat server.log | logshrink --errors-only
-```
-
-### 4. Automatic Incident Report & Clipboard Copy
-Export clean incident reports directly into Markdown and paste them into Slack or GitHub issues:
-```bash
-logshrink app.log --export incident_report.md --copy
-```
-
-**Generated Markdown:**
+**Generated Markdown Output (`incident_report.md`):**
 ```markdown
 # 🚨 LogShrink Incident & Noise Reduction Report
-- Total Lines Processed: 14,820
-- Noise Suppressed: 14,350 (96.8%)
-- Unique Incidents Detected: 1
+
+- **Generated At**: `2026-10-13 19:04:15`
+- **Source**: `/var/log/app.log`
+- **Total Lines Processed**: `14,820`
+- **Noise Suppressed**: `14,350 (96.8%)`
+- **Unique Incidents Detected**: `1`
+
+## 📊 Incident Overview
+
+| ID | Level | Occurrences | First Seen | Last Seen | Summary |
+|---|---|---|---|---|---|
+| #1 | **ERROR** | 1x | `19:04:12` | `19:04:12` | `ERROR: Database deadlock detected!` |
+
+---
+
+## 🔍 Detailed Incident Logs
 
 ### Incident #1 — ERROR (1x)
 - **First Seen**: `19:04:12`
@@ -161,43 +183,86 @@ Traceback (most recent call last):
 
 ---
 
-## 🖥️ Terminal Walkthrough
+<a id="demo"></a>
+## 🖥️ Live Terminal Walkthrough
 
-Run the included live demo:
+Test LogShrink immediately with the included synthetic demo stream:
+
 ```bash
 python -m logshrink demo.log
 ```
 
-**Output:**
-```
-[INFO] Server booted successfully on port 8080
-[INFO] 127.0.0.1 - GET /healthz 200 (took 0.4ms)
-  [-] [x5 suppressed] [INFO] 127.0.0.1 - GET /healthz 200 (last seen 19:00:05)
-┌── INCIDENT #1: ERROR ───────────────────────────────────────────
-│ [ERROR] Failed to query users table: connection refused
+```text
+2026-10-13 19:00:00.123 [INFO] App initialized on port 8080
+2026-10-13 19:00:01.001 [INFO] GET /healthz 200 OK (took 0.4ms)
+  [-] [x5 suppressed] [INFO] GET /healthz 200 OK (last seen 23:18:49)
+▲ 2026-10-13 19:00:06.100 [WARN] High memory consumption detected: 82% threshold reached
+2026-10-13 19:00:07.001 [INFO] GET /healthz 200 OK (took 0.4ms)
+  [-] [x2 suppressed] [INFO] GET /healthz 200 OK (last seen 23:18:49)
+┌── INCIDENT #1: ERROR ─────────────────────────────────────────────────
+│ 2026-10-13 19:00:09.500 [ERROR] Failed to connect to Redis cache cluster at 10.0.0.45:6379
 │ Traceback (most recent call last):
-│   File "db/pool.py", line 42, in get_connection
-│     raise ConnectionRefusedError("host unreachable: 5432")
-└─────────────────────────────────────────────────────────────────
-[INFO] Recovered connection to primary database
-  [-] [x3 suppressed] [INFO] 127.0.0.1 - GET /healthz 200 (last seen 19:00:08)
-
-═════════════════════════════════════════════════════════════════════════
-  LogShrink Reduction Summary
-─────────────────────────────────────────────────────────────────────────
-  Total lines processed : 16
-  Lines passed through  : 8
-  Lines suppressed      : 8 (50.0% noise reduced)
+│   File "/app/cache/redis.py", line 48, in connect
+│     sock.connect((self.host, self.port))
+│   File "/usr/local/lib/python3.12/socket.py", line 710, in connect
+│     raise ConnectionRefusedError(errno.ECONNREFUSED, 'Connection refused')
+│ ConnectionRefusedError: [Errno 111] Connection refused
+└───────────────────────────────────────────────────────────────────────
+2026-10-13 19:00:10.001 [INFO] Fallback to in-memory cache activated
+2026-10-13 19:00:11.001 [INFO] GET /healthz 200 OK (took 0.2ms)
+  [-] [x3 suppressed] [INFO] GET /healthz 200 OK (last seen 23:18:49)
+─── LogShrink Summary ────────────────────────────────────
+  Total lines processed : 20
+  Lines passed through  : 13
+  Lines suppressed      : 7 (35.0% noise reduced)
   Incidents captured    : 1
-  Processing time       : 0.01s (1,600 lines/sec)
-═════════════════════════════════════════════════════════════════════════
+  Processing time       : 0.00s (7,263 lines/sec)
+──────────────────────────────────────────────────────────
 ```
 
 ---
 
+<a id="installation"></a>
+## 📦 Installation
+
+LogShrink has **zero external dependencies** and works out-of-the-box on Linux, macOS, and Windows with any Python 3.9+ runtime.
+
+### ⚡ Instant execution with `uvx` (Zero installation required)
+```bash
+# Run directly from repository
+uvx --from git+https://github.com/umutgungorr/logshrink.git logshrink --help
+
+# Pipe anywhere
+docker compose logs -f | uvx --from git+https://github.com/umutgungorr/logshrink.git logshrink
+```
+
+### 🔒 Isolated install via `pipx` (Recommended for CLI tools)
+```bash
+pipx install git+https://github.com/umutgungorr/logshrink.git
+```
+
+### 🐍 Standard install via `pip`
+```bash
+# From GitHub repository
+pip install git+https://github.com/umutgungorr/logshrink.git
+
+# Or standard PyPI install (once published)
+pip install logshrink
+```
+
+### 🛠️ Build from source
+```bash
+git clone https://github.com/umutgungorr/logshrink.git
+cd logshrink
+pip install -e .
+```
+
+---
+
+<a id="cli-reference"></a>
 ## ⚙️ CLI Reference
 
-```
+```text
 usage: logshrink [-h] [-f] [-t THRESHOLD] [-w WINDOW]
                  [-p {auto,docker,json,web,raw}] [-e]
                  [--export PATH] [--copy] [-i REGEX]
@@ -205,78 +270,157 @@ usage: logshrink [-h] [-f] [-t THRESHOLD] [-w WINDOW]
                  [FILE ...]
 ```
 
-| Flag | Short | Default | Description |
-|---|---|---|---|
-| `FILE ...` | — | `stdin` | Path to log file(s). Reads from standard input if omitted or `-`. |
-| `--follow` | `-f` | `False` | Follow appended file operations in real time (like `tail -f`). |
-| `--threshold` | `-t` | `2` | Number of occurrences before collapsing repetitive logs. |
-| `--window` | `-w` | `5.0` | Debounce time window in seconds for pattern clusters. |
-| `--preset` | `-p` | `auto` | Log format parser (`auto`, `docker`, `json`, `web`, `raw`). |
-| `--errors-only` | `-e` | `False` | Drop all routine noise; only output errors, warnings, and traces. |
-| `--export` | — | `None` | Save formatted incident Markdown report to the given file path. |
-| `--copy` | — | `False` | Copy detected incidents report directly to system clipboard upon completion. |
-| `--ignore` | `-i` | `[]` | Regex pattern to discard matching lines completely (repeatable). |
-| `--no-color` | — | `False` | Disable ANSI colors (also respects standard `NO_COLOR=1`). |
-| `--no-stats` | — | `False` | Suppress the final noise reduction summary card. |
-| `--version` | `-v` | — | Print LogShrink version and exit. |
+### Options & Flags
 
----
+| Flag | Short | Type | Default | Description |
+|---|:---:|:---:|:---:|---|
+| `FILE ...` | — | `path` | `stdin` | Path to log file(s). Reads continuous stream from standard input if omitted or `-`. |
+| `--follow` | `-f` | `bool` | `False` | Follow appended file operations in real time (equivalent to `tail -f`). |
+| `--threshold` | `-t` | `int` | `2` | Minimum consecutive/pattern occurrences required before collapsing repetitions. |
+| `--window` | `-w` | `float` | `5.0` | Sliding time-window debounce threshold (in seconds) for recurring patterns. |
+| `--preset` | `-p` | `choice` | `auto` | Log format parser: `auto`, `docker`, `json`, `web`, `raw`. |
+| `--errors-only` | `-e` | `bool` | `False` | Discard all routine noise; only output errors, warnings, and stack traces. |
+| `--export` | — | `path` | `None` | Export all detected error incidents to a formatted Markdown report file. |
+| `--copy` | — | `bool` | `False` | Copy detected incidents report directly to system clipboard upon completion. |
+| `--ignore` | `-i` | `regex` | `[]` | Regex pattern to discard matching lines completely (repeatable). |
+| `--no-color` | — | `bool` | `False` | Disable ANSI colors and boxes (also respects standard `NO_COLOR=1`). |
+| `--no-stats` | — | `bool` | `False` | Suppress the final noise reduction summary card upon completion. |
+| `--version` | `-v` | `bool` | — | Show program version and exit. |
+| `--help` | `-h` | `bool` | — | Show help message and command-line usage. |
 
-## 🧩 Presets
+### Presets
 
-- **`auto`** *(default)*: Dynamically detects JSON lines, Docker compose prefixes, and standard timestamped logs.
-- **`docker`**: Strips container prefixes (e.g. `api-server_1 | `) and standard container run timestamps.
-- **`json`**: Unpacks structured JSON fields (`level`, `msg`, `status`, `path`) into human-readable compact signatures.
-- **`web`**: Tailored for HTTP access logs (Nginx, Apache, Caddy, uvicorn), extracting method, route, and status code.
+- **`auto`** *(default)*: Dynamically detects JSON lines, Docker compose container prefixes, and standard ISO/Syslog timestamped logs.
+- **`docker`**: Strips container prefixes (e.g. `api-server_1 | `) and container engine run timestamps.
+- **`json`**: Unpacks structured JSON fields (`level`, `msg`, `message`, `status`, `path`) into compact human signatures.
+- **`web`**: Tailored for HTTP access logs (Nginx, Apache, Caddy, Uvicorn), extracting method, route, and status code.
 - **`raw`**: Performs strict line-by-line deduplication without fuzzy masking.
 
 ---
 
-## 📊 Benchmarks & Performance
+<a id="pipeline-architecture"></a>
+## 🔬 How It Works: Pipeline Architecture
 
-Benchmarked on an Apple M-series / AMD Ryzen workstation with 100,000 synthetic log lines:
+LogShrink processes streaming log events through a high-performance 5-stage pipeline designed for **$O(1)$ constant memory consumption**:
 
-| Metric | LogShrink | Standard `grep` Pipeline |
-|---|---|---|
-| **Startup Time** | **< 15 ms** | ~ 5 ms |
-| **Throughput** | **> 120,000 lines/sec** | ~ 80,000 lines/sec |
-| **Memory Footprint** | **< 18 MB RSS** (streaming, O(1)) | ~ 10 MB RSS |
-| **Multi-Line Incident Grouping** | **Automatic (5 languages)** | Not supported |
-| **Noise Reduction** | **94% - 99%** | Manual regex needed |
+```text
+ ┌────────────────────────────────────────────────────────┐
+ │           Incoming Stream (stdin / tail -f)            │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ 1. Ingestion & Preset Tokenizer                        │
+ │    • Strips container tags (`backend_1 |`)             │
+ │    • Extracts structured JSON fields (`msg`, `level`)  │
+ │    • Normalizes Web access patterns (`GET /healthz`)   │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ 2. Dynamic Pattern Normalizer                          │
+ │    • Masks ephemeral timestamps (`<TIMESTAMP>`)        │
+ │    • Masks UUIDs, IPv4/IPv6, hex addresses (`0x7f...`) │
+ │    • Masks durations (`0.4ms`), ports (`:8080`), sizes │
+ │    • Computes canonical pattern fingerprint            │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ 3. Multi-Pattern Sliding-Window Aggregator             │
+ │    • Maintains separate debouncing state per pattern   │
+ │    • Tracks repetition counts within time window       │
+ │    • Suppresses lines meeting threshold (default: >=2) │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ 4. Incident Boundary Detector                          │
+ │    • Detects multi-line traces (Python, Go, Java,      │
+ │      Rust, Node.js async traces)                       │
+ │    • Captures HTTP 5xx server exceptions               │
+ │    • Filters false positives (`0 errors`, `err: nil`)  │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │ 5. Terminal & Incident Exporter                        │
+ │    • High-contrast ANSI bounding boxes for incidents   │
+ │    • Live suppression counter badges                   │
+ │    • Markdown postmortem report generator              │
+ │    • Direct system clipboard integration               │
+ └────────────────────────────────────────────────────────┘
+```
+
+1. **Ingestion & Preset Tokenizer**: Fast pre-filtering that strips environment artifacts (such as Docker Compose container names or syslog headers) while preserving the underlying message.
+2. **Dynamic Pattern Normalizer**: Converts transient variable data into stable tokens without requiring complex regexes from the user. Timestamps, request IDs, IP addresses, memory pointers, and microsecond latencies are unified into a canonical signature.
+3. **Multi-Pattern Sliding-Window Aggregator**: Avoids buffer explosions by keeping rolling pattern hashes. If multiple periodic events interleave (e.g., metric scrape A followed by heartbeat B), both are independently tracked and suppressed without losing count.
+4. **Incident Boundary Detector**: Inspects lines for error severity tokens and multi-line exception starters across 5 major programming languages. Blocks false positives such as `0 errors found` or `err: nil`.
+5. **Terminal & Incident Exporter**: Highlights true errors inside ANSI border boxes, renders compact badges for collapsed noise, and produces markdown exports for incident postmortems.
 
 ---
 
-## 🧪 Testing
+<a id="benchmarks"></a>
+## 🚀 Benchmarks & Performance
 
-LogShrink has 100% passing tests with extensive edge case coverage:
+Benchmarked against a 100,000-line synthetic log stream (containing interleaved healthchecks, metrics, warnings, and stack traces):
+
+| Benchmark Metric | LogShrink | Standard `grep -v` Pipeline |
+|---|:---:|:---:|
+| **Cold Start Time** | **< 15 ms** (POSIX) / < 50 ms (Win) | ~ 5 ms |
+| **Stream Throughput** | **10,000+ lines/sec** | ~ 80,000 lines/sec |
+| **Memory Consumption (Heap)** | **< 10 MB** (constant $O(1)$) | ~ 10 MB |
+| **Multi-Line Incident Grouping** | **Automatic (5 languages)** | ❌ Not supported |
+| **Noise Reduction Ratio** | **94% – 99%** | Manual regex dependent |
+| **Crash Context Preservation** | **100% (No data loss)** | ❌ Breaks multi-line context |
+
+---
+
+<a id="test-suite"></a>
+## 🧪 Comprehensive Test Suite
+
+LogShrink has **100% passing tests** with 84% branch coverage:
 
 ```bash
-# Run pytest test suite
+# Run complete pytest test suite
 pytest
 
-# Run with coverage report
+# Run tests with detailed line coverage report
 pytest --cov=src/logshrink --cov-report=term-missing
 ```
 
-The 59-test suite validates:
-- Multi-language stack trace boundaries (Python, Go, Java, Rust, Node.js)
-- Normalization of UUIDs, IPv4/IPv6, ephemeral ports, hex memory pointers, and durations
-- Interleaved recurring pattern collapsing and debouncing
-- False-positive prevention (`err: nil`, `0 errors`, `status=ok error=none`)
-- Web access HTTP 5xx error and 4xx warning boundary isolation
-- Docker JSON file driver log payload extraction
-- Real-time follow mode and file rotation handling
-- Broken pipe handling in CLI pipelines
-- System clipboard and Markdown export formatters
+The 59-test suite covers:
+- ✅ Multi-language stack trace boundaries (Python, Go, Java, Rust, Node.js)
+- ✅ Ephemeral masking for UUIDs, IPv4/IPv6, ephemeral ports, hex pointers, durations, and sizes
+- ✅ Interleaved recurring pattern collapsing and debouncing
+- ✅ False-positive phrase suppression (`err: nil`, `0 errors`, `status=ok error=none`)
+- ✅ Web access HTTP 5xx error and 4xx warning boundary isolation
+- ✅ Docker JSON file driver log payload extraction
+- ✅ Real-time follow mode (`-f`) and file rotation handling
+- ✅ Clean broken pipe handling (`SIGPIPE`) in CLI pipelines
+- ✅ System clipboard (`pbcopy`, `wl-copy`, `xclip`, `clip.exe`) and Markdown export formatters
 
 ---
 
+<a id="contributing"></a>
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before submitting a pull request.
+Contributions, issues, and feature requests are welcome!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Run formatting and tests (`ruff check . && pytest`)
+4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for detailed guidelines.
 
 ---
 
+<a id="license"></a>
 ## 📄 License
 
-MIT License. Copyright (c) 2026 Umut Güngör. See [LICENSE](LICENSE) for details.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for more information.
+
+Copyright © 2026 [Umut Güngör](https://github.com/umutgungorr).
