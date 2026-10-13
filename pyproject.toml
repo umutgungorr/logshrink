@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logshrink"
+version = "0.1.0"
+description = "A zero-config CLI that deduplicates repetitive polling noise and auto-highlights real errors in live terminal logs."
+readme = "README.md"
+authors = [
+    { name = "Umut Güngör", email = "umutgungor.dev@gmail.com" }
+]
+maintainers = [
+    { name = "Umut Güngör", email = "umutgungor.dev@gmail.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = [
+    "cli",
+    "logs",
+    "logging",
+    "debugging",
+    "developer-tools",
+    "terminal",
+    "monitoring",
+    "error-detection",
+    "deduplication",
+    "stream-filter"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Logging",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities"
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0"
+]
+
+[project.scripts]
+logshrink = "logshrink.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/umutgungorr/logshrink"
+Repository = "https://github.com/umutgungorr/logshrink"
+Issues = "https://github.com/umutgungorr/logshrink/issues"
+Changelog = "https://github.com/umutgungorr/logshrink/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --strict-markers"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = [
+    "E501",  # Line length handled by formatter
+    "UP042", # StrEnum is only Python 3.11+; str, enum.Enum is needed for 3.9/3.10
+]

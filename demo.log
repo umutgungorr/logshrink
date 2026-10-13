@@ -1,0 +1,20 @@
+2026-10-13 19:00:00.123 [INFO] App initialized on port 8080
+2026-10-13 19:00:01.001 [INFO] GET /healthz 200 OK (took 0.4ms)
+2026-10-13 19:00:02.002 [INFO] GET /healthz 200 OK (took 0.5ms)
+2026-10-13 19:00:03.003 [INFO] GET /healthz 200 OK (took 0.3ms)
+2026-10-13 19:00:04.004 [INFO] GET /healthz 200 OK (took 0.6ms)
+2026-10-13 19:00:05.005 [INFO] GET /healthz 200 OK (took 0.4ms)
+2026-10-13 19:00:06.100 [WARN] High memory consumption detected: 82% threshold reached
+2026-10-13 19:00:07.001 [INFO] GET /healthz 200 OK (took 0.4ms)
+2026-10-13 19:00:08.002 [INFO] GET /healthz 200 OK (took 0.5ms)
+2026-10-13 19:00:09.500 [ERROR] Failed to connect to Redis cache cluster at 10.0.0.45:6379
+Traceback (most recent call last):
+  File "/app/cache/redis.py", line 48, in connect
+    sock.connect((self.host, self.port))
+  File "/usr/local/lib/python3.12/socket.py", line 710, in connect
+    raise ConnectionRefusedError(errno.ECONNREFUSED, 'Connection refused')
+ConnectionRefusedError: [Errno 111] Connection refused
+2026-10-13 19:00:10.001 [INFO] Fallback to in-memory cache activated
+2026-10-13 19:00:11.001 [INFO] GET /healthz 200 OK (took 0.2ms)
+2026-10-13 19:00:12.002 [INFO] GET /healthz 200 OK (took 0.3ms)
+2026-10-13 19:00:13.003 [INFO] GET /healthz 200 OK (took 0.2ms)

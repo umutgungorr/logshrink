@@ -1,0 +1,1 @@
+"""LogShrink test package."""
