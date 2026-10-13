@@ -1,0 +1,74 @@
+name: 'LogShrink Log Cleaner'
+description: 'Deduplicate noisy CI polling logs and auto-highlight error traces in GitHub Actions'
+author: 'Umut Güngör'
+
+branding:
+  icon: 'filter'
+  color: 'blue'
+
+inputs:
+  log-file:
+    description: 'Path to the log file to clean and analyze'
+    required: true
+  summary:
+    description: 'Write formatted markdown incident and noise reduction report to $GITHUB_STEP_SUMMARY'
+    required: false
+    default: 'true'
+  export-file:
+    description: 'Optional file path to export the markdown incident report'
+    required: false
+    default: ''
+  options:
+    description: 'Additional flags to pass to logshrink (e.g. --errors-only, --preset docker)'
+    required: false
+    default: ''
+
+outputs:
+  incident-count:
+    description: 'Total number of detected error incidents'
+    value: ${{ steps.run-logshrink.outputs.incident-count }}
+  reduced-percentage:
+    description: 'Percentage of repetitive noise lines suppressed'
+    value: ${{ steps.run-logshrink.outputs.reduced-percentage }}
+  suppressed-lines:
+    description: 'Total number of repetitive noise lines suppressed'
+    value: ${{ steps.run-logshrink.outputs.suppressed-lines }}
+  total-lines:
+    description: 'Total log lines processed'
+    value: ${{ steps.run-logshrink.outputs.total-lines }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install LogShrink
+      shell: bash
+      run: |
+        PYTHON_BIN="python"
+        if ! command -v python &> /dev/null; then
+          PYTHON_BIN="python3"
+        fi
+        "$PYTHON_BIN" -m pip install --quiet "${{ github.action_path }}"
+
+    - name: Run LogShrink
+      id: run-logshrink
+      shell: bash
+      run: |
+        PYTHON_BIN="python"
+        if ! command -v python &> /dev/null; then
+          PYTHON_BIN="python3"
+        fi
+
+        ARGS=()
+        if [ "${{ inputs.summary }}" = "true" ]; then
+          ARGS+=(--summary)
+        fi
+        if [ -n "${{ inputs.export-file }}" ]; then
+          ARGS+=(--export "${{ inputs.export-file }}")
+        fi
+        if [ -n "${{ inputs.options }}" ]; then
+          read -r -a EXTRA <<< "${{ inputs.options }}"
+          ARGS+=("${EXTRA[@]}")
+        fi
+        ARGS+=("${{ inputs.log-file }}")
+
+        "$PYTHON_BIN" -m logshrink "${ARGS[@]}"

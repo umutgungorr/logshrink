@@ -14,17 +14,20 @@
 **A zero-dependency CLI stream filter that deduplicates repetitive polling floods, highlights multi-line errors, and captures incident postmortems in real time.**
 
 [![CI](https://github.com/umutgungorr/logshrink/actions/workflows/ci.yml/badge.svg)](https://github.com/umutgungorr/logshrink/actions)
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg?logo=git&logoColor=white)](https://github.com/umutgungorr/logshrink/releases)
+[![Action CI](https://github.com/umutgungorr/logshrink/actions/workflows/test-action.yml/badge.svg)](https://github.com/umutgungorr/logshrink/actions)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-LogShrink%20Action-blue?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/logshrink-log-cleaner)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?logo=git&logoColor=white)](https://github.com/umutgungorr/logshrink/releases)
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB.svg?logo=python&logoColor=white)](https://github.com/umutgungorr/logshrink)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20external-success.svg)](pyproject.toml)
-[![Coverage](https://img.shields.io/badge/coverage-84%25-brightgreen.svg)](#test-suite)
-[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen.svg)](#test-suite)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](#test-suite)
+[![Tests](https://img.shields.io/badge/tests-62%20passed-brightgreen.svg)](#test-suite)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
 
 [⚡ Quickstart](#quickstart) •
+[🤖 GitHub Actions CI](#github-actions-ci) •
 [💥 Problem vs. Solution](#problem-solution) •
 [📊 Feature Comparison](#feature-comparison) •
 [📦 Installation](#installation) •
@@ -219,6 +222,81 @@ python -m logshrink demo.log
   Processing time       : 0.00s (7,263 lines/sec)
 ──────────────────────────────────────────────────────────
 ```
+
+---
+
+<a id="github-actions-ci"></a>
+## 🤖 GitHub Actions CI Integration
+
+Deduplicate noisy build outputs and automatically render clean incident postmortems in your GitHub Actions workflow summary in **3 lines of YAML**:
+
+```yaml
+- name: Clean & Summarize CI Logs
+  uses: umutgungorr/logshrink@v1
+  with:
+    log-file: ci-test-run.log
+```
+
+### 🌟 Why Use LogShrink in GitHub Actions?
+- **No More CI Truncation**: GitHub Actions truncates browser log viewers when output exceeds buffer limits. LogShrink suppresses repetitive polling noise (e.g. health checks, heartbeat pings) while preserving every unique error.
+- **Native Step Summary**: Automatically appends a rich Markdown incident card to `$GITHUB_STEP_SUMMARY`, so your team sees root-cause stack traces without downloading raw artifacts.
+- **Cross-Platform Runner Support**: Runs seamlessly on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
+- **Lightning Fast (< 2s)**: Zero external dependencies means instant setup and execution in your pipeline.
+
+### 📋 Full Production Workflow Recipe
+
+```yaml
+name: Test Suite & Service Checks
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Integration Tests & Save Log
+        id: run-tests
+        run: |
+          pytest -v 2>&1 | tee test-output.log
+        continue-on-error: true
+
+      - name: Process Logs with LogShrink
+        id: logshrink
+        uses: umutgungorr/logshrink@v1
+        with:
+          log-file: test-output.log
+          summary: 'true'
+          export-file: test-incidents.md
+
+      - name: Fail CI if Incidents Detected
+        if: steps.run-tests.outcome == 'failure' || steps.logshrink.outputs.incident-count > 0
+        run: |
+          echo "Detected ${{ steps.logshrink.outputs.incident-count }} critical incidents in test run!"
+          exit 1
+```
+
+### ⚙️ Action Inputs
+
+| Input | Description | Required | Default |
+|---|---|:---:|:---:|
+| `log-file` | Path to the log file to clean and analyze | **Yes** | — |
+| `summary` | Write formatted markdown incident report to `$GITHUB_STEP_SUMMARY` | No | `'true'` |
+| `export-file` | File path to export markdown incident report file | No | `''` |
+| `options` | Additional CLI flags (e.g. `--errors-only`, `--preset docker`) | No | `''` |
+
+### 📤 Action Outputs
+
+| Output | Description |
+|---|---|
+| `incident-count` | Total count of detected unique error incidents and stack traces |
+| `reduced-percentage` | Percentage of repetitive polling noise suppressed (e.g. `85.4`) |
+| `suppressed-lines` | Total number of noise lines suppressed |
+| `total-lines` | Total number of lines processed |
 
 ---
 

@@ -86,6 +86,26 @@ class Exporter:
             return False
 
     @staticmethod
+    def append_markdown(
+        incidents: list[Incident],
+        stats: ShrinkStats,
+        destination_path: str,
+        source_name: str = "Stream",
+    ) -> bool:
+        """Appends generated Markdown report to a file path (e.g. $GITHUB_STEP_SUMMARY)."""
+        try:
+            content = Exporter.generate_markdown(incidents, stats, source_name)
+            dirname = os.path.dirname(destination_path)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+            with open(destination_path, "a", encoding="utf-8") as f:
+                f.write("\n" + content + "\n")
+            return True
+        except Exception as e:
+            print(f"LogShrink Warning: Failed to append report to '{destination_path}': {e}")
+            return False
+
+    @staticmethod
     def copy_to_clipboard(text: str) -> bool:
         """Copies text to the system clipboard using native utilities or pyperclip."""
         # 1. Try pyperclip if available

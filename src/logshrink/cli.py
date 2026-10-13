@@ -84,6 +84,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Write/append formatted Markdown incident report to $GITHUB_STEP_SUMMARY (for GitHub Actions).",
+    )
+
+    parser.add_argument(
         "--copy",
         action="store_true",
         help="Copy captured error incidents to the system clipboard upon exit.",
@@ -219,6 +225,34 @@ def run(args: list[str] | None = None) -> int:
                 destination_path=config.export_path,
                 source_name=source_label,
             )
+
+        # Step Summary if requested (e.g. GitHub Actions step summary)
+        if parsed_args.summary:
+            summary_env = os.environ.get("GITHUB_STEP_SUMMARY")
+            if summary_env:
+                Exporter.append_markdown(
+                    incidents=incidents,
+                    stats=aggregator.stats,
+                    destination_path=summary_env,
+                    source_name=source_label,
+                )
+            else:
+                Exporter.save_markdown(
+                    incidents=incidents,
+                    stats=aggregator.stats,
+                    destination_path="logshrink-summary.md",
+                    source_name=source_label,
+                )
+
+        # Output GitHub Actions step outputs if running in CI
+        github_output = os.environ.get("GITHUB_OUTPUT")
+        if github_output:
+            with contextlib.suppress(Exception):
+                with open(github_output, "a", encoding="utf-8") as gf:
+                    gf.write(f"incident-count={len(incidents)}\n")
+                    gf.write(f"reduced-percentage={aggregator.stats.reduction_percentage:.1f}\n")
+                    gf.write(f"suppressed-lines={aggregator.stats.suppressed_lines}\n")
+                    gf.write(f"total-lines={aggregator.stats.total_lines}\n")
 
         # Clipboard Copy if requested
         if config.copy_to_clipboard:

@@ -84,3 +84,35 @@ def test_cli_version_flag():
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(["-v"])
     assert exc_info.value.code == 0
+
+
+def test_cli_summary_flag(tmp_path, monkeypatch):
+    summary_file = tmp_path / "step_summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+    log_file = tmp_path / "test.log"
+    log_file.write_text("2026-10-13 [INFO] Health check\n", encoding="utf-8")
+
+    exit_code = run([str(log_file), "--summary"])
+    assert exit_code == 0
+    assert summary_file.exists()
+    content = summary_file.read_text(encoding="utf-8")
+    assert "LogShrink Incident & Noise Reduction Report" in content
+
+
+def test_cli_github_output_env(tmp_path, monkeypatch):
+    output_file = tmp_path / "github_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
+    log_file = tmp_path / "test.log"
+    log_file.write_text(
+        "2026-10-13 [INFO] ping\n2026-10-13 [INFO] ping\n2026-10-13 [ERROR] failure\n",
+        encoding="utf-8",
+    )
+
+    exit_code = run([str(log_file)])
+    assert exit_code == 0
+    assert output_file.exists()
+    content = output_file.read_text(encoding="utf-8")
+    assert "incident-count=" in content
+    assert "reduced-percentage=" in content
+    assert "suppressed-lines=" in content
+    assert "total-lines=3" in content

@@ -61,3 +61,16 @@ def test_clipboard_copy_native_fallback():
 
         result = Exporter.copy_to_clipboard("Sample Incident Log")
         assert result is True
+
+
+def test_append_markdown_file(tmp_path):
+    dest = tmp_path / "summary.md"
+    dest.write_text("# Initial Summary Header\n", encoding="utf-8")
+    stats = ShrinkStats(total_lines=20, suppressed_lines=15)
+
+    success = Exporter.append_markdown([], stats, str(dest), source_name="ci.log")
+    assert success is True
+    content = dest.read_text(encoding="utf-8")
+    assert "# Initial Summary Header" in content
+    assert "LogShrink Incident & Noise Reduction Report" in content
+    assert "ci.log" in content

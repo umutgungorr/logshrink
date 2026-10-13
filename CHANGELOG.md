@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-10-13
+
+### Added
+- **GitHub Marketplace Composite Action (`action.yml`)**:
+  - Official GitHub Action supporting `uses: umutgungorr/logshrink@v1` and `uses: umutgungorr/logshrink@v1.0.0`.
+  - Zero-config CI noise cleaner running on Linux, macOS, and Windows runner environments.
+  - Native step summary support: appends formatted Markdown incident reports directly to `$GITHUB_STEP_SUMMARY`.
+  - Step outputs: `incident-count`, `reduced-percentage`, `suppressed-lines`, and `total-lines`.
+  - Dedicated action verification workflow (`.github/workflows/test-action.yml`).
+- **CLI Step Summary Flag (`--summary`)**:
+  - Command-line option to write/append structured Markdown incident reports to `$GITHUB_STEP_SUMMARY`.
+- **Growth & Launch Playbook (`LAUNCH_KIT.md`)**:
+  - Complete launch assets and copy for Hacker News (Show HN), Reddit (`r/Python`, `r/devops`, `r/commandline`), X/Twitter, LinkedIn, and Turkish developer communities.
+
+---
+
 ## [0.1.0] - 2026-10-13
 
 ### Added

@@ -1,0 +1,55 @@
+name: Test Action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-action:
+    name: Test Action (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run LogShrink Action on demo log
+        id: logshrink-step
+        uses: ./
+        with:
+          log-file: demo.log
+          summary: 'true'
+          export-file: artifacts-report.md
+
+      - name: Verify outputs and exported markdown report
+        shell: bash
+        run: |
+          echo "Incident count: ${{ steps.logshrink-step.outputs.incident-count }}"
+          echo "Suppressed lines: ${{ steps.logshrink-step.outputs.suppressed-lines }}"
+          echo "Total lines: ${{ steps.logshrink-step.outputs.total-lines }}"
+          echo "Reduced %: ${{ steps.logshrink-step.outputs.reduced-percentage }}"
+
+          # Verify report file exists
+          if [ ! -f "artifacts-report.md" ]; then
+            echo "Error: artifacts-report.md was not created!"
+            exit 1
+          fi
+
+          # Verify step outputs
+          if [ "${{ steps.logshrink-step.outputs.incident-count }}" -ne 1 ]; then
+            echo "Error: expected 1 incident, got ${{ steps.logshrink-step.outputs.incident-count }}"
+            exit 1
+          fi
+
+          echo "Action verification successful!"

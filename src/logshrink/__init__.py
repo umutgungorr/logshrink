@@ -2,7 +2,7 @@
 and auto-highlights real errors in live terminal logs.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "Umut Güngör"
 __license__ = "MIT"
 
