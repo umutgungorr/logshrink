@@ -17,6 +17,7 @@
 [![Action CI](https://github.com/umutgungorr/logshrink/actions/workflows/test-action.yml/badge.svg)](https://github.com/umutgungorr/logshrink/actions)
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-LogShrink%20Action-blue?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/logshrink-log-cleaner)
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?logo=git&logoColor=white)](https://github.com/umutgungorr/logshrink/releases)
+[![PyPI](https://img.shields.io/pypi/v/logshrink.svg?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/logshrink/)
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB.svg?logo=python&logoColor=white)](https://github.com/umutgungorr/logshrink)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0%20external-success.svg)](pyproject.toml)
 [![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](#test-suite)
@@ -322,11 +323,12 @@ pipx install git+https://github.com/umutgungorr/logshrink.git
 
 ### 🐍 Standard install via `pip`
 ```bash
-# From GitHub repository
-pip install git+https://github.com/umutgungorr/logshrink.git
-
-# Or standard PyPI install (once published)
 pip install logshrink
+```
+
+### ⚡ Run without installing via `uvx`
+```bash
+uvx logshrink
 ```
 
 ### 🛠️ Build from source
