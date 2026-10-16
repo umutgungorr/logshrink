@@ -58,7 +58,7 @@ dev = [
 logshrink = "logshrink.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/umutgungorr/logshrink"
+Homepage = "https://umutgungorr.com/"
 Repository = "https://github.com/umutgungorr/logshrink"
 Issues = "https://github.com/umutgungorr/logshrink/issues"
 Changelog = "https://github.com/umutgungorr/logshrink/blob/main/CHANGELOG.md"
