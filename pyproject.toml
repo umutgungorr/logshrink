@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "logshrink"
-version = "1.0.0"
+version = "1.0.1"
 description = "A zero-config CLI that deduplicates repetitive polling noise and auto-highlights real errors in live terminal logs."
 readme = "README.md"
 authors = [
@@ -59,6 +59,7 @@ logshrink = "logshrink.cli:main"
 
 [project.urls]
 Homepage = "https://umutgungorr.com/"
+Documentation = "https://umutgungorr.com/projects/logshrink"
 Repository = "https://github.com/umutgungorr/logshrink"
 Issues = "https://github.com/umutgungorr/logshrink/issues"
 Changelog = "https://github.com/umutgungorr/logshrink/blob/main/CHANGELOG.md"
