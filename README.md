@@ -512,7 +512,7 @@ Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE
 
 ## 📖 Project Case Study
 
-LogShrink is an open-source project by [Umut Güngör](https://umutgungorr.com/). Read the [LogShrink case study](https://umutgungorr.com/projects/logshrink) for its streaming tokenizer architecture, deduplication heuristics, and benchmarks.
+LogShrink is an open-source project by [Umut Güngör](https://umutgungorr.com/). Read the [LogShrink case study](https://umutgungorr.com/projects/logshrink) for its streaming tokenizer architecture, deduplication heuristics, and benchmarks, or read the CI workflow guide: [How to Compress Noisy CI/CD and Production Logs Without Losing Stack Traces or Exit Codes](https://umutgungorr.com/blog/debug-production-logs-logshrink?lang=en).
 
 ---
 
